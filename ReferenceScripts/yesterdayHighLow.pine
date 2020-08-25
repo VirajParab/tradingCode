@@ -1,0 +1,22 @@
+//Created by Lachlan Smith 31/03/15
+//Daily/Weekly/Monthly High and Lows
+study(title="High and Lows", shorttitle="H&Ls", overlay=true)
+disDaily = input(true, title="Show Daily High & Lows?")
+disWeekly = input(false, title="Show Weekly High & Lows?")
+disMonthly = input(false, title="Show Monthly High & Lows?")
+
+//Data setup
+dHigh = security(tickerid, 'D', high[1])
+dLow = security(tickerid, 'D', low[1])
+wHigh = security(tickerid, 'W', high[1])
+wLow = security(tickerid, 'W', low[1])
+mHigh = security(tickerid, 'M', high[1])
+mLow = security(tickerid, 'M', low[1])
+
+
+plot(disDaily and dHigh ? dHigh : na, title="Daily High",style=cross, color=black,linewidth=1, trackprice = true)
+plot(disDaily and dLow ? dLow : na, title="Daily Low",style=cross, color=black,linewidth=1, trackprice = true)
+plot(disWeekly and wHigh ? dHigh : na, title="Weekly High",style=cross, color=silver,linewidth=1, trackprice = true)
+plot(disWeekly and wLow ? dLow : na, title="Weekly Low",style=cross, color=silver,linewidth=1, trackprice = true)
+plot(disMonthly and mHigh ? dHigh : na, title="Monthly High",style=cross, color=silver,linewidth=1, trackprice = true)
+plot(disMonthly and mLow ? dLow : na, title="Monthly Low",style=cross, color=silver,linewidth=1, trackprice = true)

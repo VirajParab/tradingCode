@@ -1,0 +1,49 @@
+study("Stock Market Trend Analysis Trading System 101 (by ChartArt)", shorttitle="CA_-_TradingSystem101", overlay=true)
+
+// ChartArt's Stock Market Trend Analysis Trading System 101 Indicator
+//
+// Version 1.0
+// Idea by ChartArt on August 3, 2015.
+//
+// This indicator is measuring the essential core of
+// uptrends and downtrends using three basic elements:
+// Close price, HL2 price, Pivot price.
+//
+// Potential stronger uptrends and downtrends are
+// shown in a different brighter color. And if the
+// trend changed from uptrend to downtrend (or vice versa)
+// there is a background color highlight.
+//
+// List of my work:
+// https://www.tradingview.com/u/ChartArt/
+
+
+// high, low band
+lower = low
+upper = high
+l = plot(lower, color=silver)
+u = plot(upper, color=silver)
+fill(u, l, color=silver)
+
+// pivot
+pivot = (high + low + close ) / 3.0
+
+// bar color
+TrendingUp() => close > close[1] and hl2 > hl2[1] and close > pivot
+TrendingDown() => close < close[1] and hl2 < hl2[1] and close < pivot
+barcolor(TrendingUp() ? green : TrendingDown() ? red : blue)
+
+// background color
+bgcolor(TrendingUp() and TrendingDown()[1] ? green : TrendingDown() and TrendingUp()[1] ? red : na)
+
+// buy, sell signals
+bearish = cross(close,pivot) == 1 and close[1] > close
+bullish = cross(close,pivot) == 1 and close[1] < close
+plotshape(bearish, color=maroon, style=shape.arrowdown, text="Sell", location=location.abovebar)
+plotshape(bullish, color=olive, style=shape.arrowup, text="Buy", location=location.belowbar)
+
+// strong buy, strong sell signals
+verybearish = cross(close,pivot) == 1 and close[1] > close and TrendingDown()
+verybullish = cross(close,pivot) == 1 and close[1] < close and TrendingUp()
+plotshape(verybearish, color=fuchsia, style=shape.arrowdown, text="Sell", location=location.abovebar)
+plotshape(verybullish, color=lime, style=shape.arrowup, text="Buy", location=location.belowbar)
