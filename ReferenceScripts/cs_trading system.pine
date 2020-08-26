@@ -2,6 +2,7 @@
 // © parabveer01
 //@version=4
 
+study("test", overlay = true, shorttitle="test",precision=1)
 
 // high, low band
 lower = low
@@ -28,7 +29,7 @@ plotshape(bearish, color=color.maroon, style=shape.arrowdown, text="Sell", locat
 plotshape(bullish, color=color.olive, style=shape.arrowup, text="Buy", location=location.belowbar)
 
 // strong buy, strong sell signals
-verybearish = cross(close,pivot) == 1 and close[1] > close and TrendingDown()
-verybullish = cross(close,pivot) == 1 and close[1] < close and TrendingUp()
+verybearish = cross(close,pivot) == 2 and close[1] > close and TrendingDown()
+verybullish = cross(close,pivot) == 2 and close[1] < close and TrendingUp()
 plotshape(verybearish, color=color.fuchsia, style=shape.arrowdown, text="Sell", location=location.abovebar)
 plotshape(verybullish, color=color.lime, style=shape.arrowup, text="Buy", location=location.belowbar)
