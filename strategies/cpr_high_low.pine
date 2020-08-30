@@ -71,11 +71,13 @@ bearishReversal = close > close[1] and close > close[2]
 plotshape(buyCall, color=color.lime, style=shape.arrowup, text="BuyCall", location=location.belowbar)
 plotshape(sellCall, color=color.fuchsia, style=shape.arrowdown, text="SellCall", location=location.abovebar)
 
-strategy.entry("buy", strategy.long, 200, when= window() and buyCall)
-strategy.close("buy", when= window() and sellCall or bullishReversal)
+if(window())
+    strategy.entry("buy", strategy.long, 200, when = buyCall)
+    strategy.close("buy", when = sellCall or bullishReversal)
+    strategy.exit("Stop Loss/TP","buy", stop=2000)
+    strategy.entry("sell", strategy.short, 200, when = sellCall)
+    strategy.close("sell", when = buyCall or bearishReversal)
+    strategy.exit("Stop Loss/TP","sell", stop=2000)
 
-strategy.entry("sell", strategy.short, 200, when=window() and sellCall)
-strategy.close("sell", when= window() and buyCall or bearishReversal)
 
-strategy.exit("Stop Loss/TP","sell", loss=100)
 
