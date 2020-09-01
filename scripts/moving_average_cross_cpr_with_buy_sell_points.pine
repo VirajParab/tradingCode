@@ -1,4 +1,10 @@
 //@version=4
+//TODO:
+//- Add moving average
+//- CPR
+//- High low
+//- sell and buy calls
+//- candle patterns
 study("EMA Slope + EMA Cross Strategy + pivot point", shorttitle="EMA_pivot_points", overlay=true)
 
 //******************** MOVING AVERAGE ***********************
@@ -18,8 +24,8 @@ MA2 = ema(price, MA2_Length)
 MA3 = ema(price, MA3_Length)
 
 // Strategy
-long = crossunder(price, MA3) or ( change(price)<0 and change(MA1)<0 and crossunder(price,MA1) and change(MA2)>0 )
-short = crossover(price, MA3) or ( change(price)>0 and change(MA1)>0 and crossover(price,MA1)  and change(MA2)<0 )
+longEmaCross = crossunder(price, MA3) or ( change(price)<0 and change(MA1)<0 and crossunder(price,MA1) and change(MA2)>0 )
+shortEmaCross = crossover(price, MA3) or ( change(price)>0 and change(MA1)>0 and crossover(price,MA1)  and change(MA2)<0 )
 
 //if long
 //  strategy.entry("Long", strategy.long, comment="Long")
@@ -168,7 +174,7 @@ plot(WeeklyS1R1 ? WR1 : na , title = "W-R1" , color = WR1Color, style = plot.sty
 plot(WeeklyS2R2 ? WR2 : na , title = "W-R2" , color = WR2Color, style = plot.style_cross, linewidth =1)
 plot(WeeklyS3R3 ? WR3 : na , title = "W-R3" , color = WR3Color, style = plot.style_cross, linewidth =1)
 
-//******************MONTHLY PIVOTS**************************
+//******************MONTHLY HIGH/LOW**************************
 
 // Getting Monhly Pivot
 MPivot = security(syminfo.tickerid, "M", pivot[1],barmerge.gaps_off, barmerge.lookahead_on)
@@ -207,3 +213,35 @@ MR3Color =MR3 != MR3[1] ? na : color.red
 plot(MonthlyS1R1 ? MR1 : na , title = "M-R1", color = MR1Color, style = plot.style_circles , linewidth =1)
 plot(MonthlyS2R2 ? MR2 : na , title = "M-R2" , color = MR2Color, style = plot.style_circles, linewidth =1)
 plot(MonthlyS3R3 ? MR3 : na, title = "M-R3" , color = MR3Color, style = plot.style_circles, linewidth =1)
+
+//*********************** strong Buy/ sell calls ***********************************************
+
+// high, low band
+lowerr = low
+upperr = high
+l = plot(lowerr, color=color.silver)
+u = plot(upperr, color=color.silver)
+fill(u, l, color=color.silver)
+
+// bar color
+TrendingUp() => close > close[1] and hl2 > hl2[1] and close > pivot
+TrendingDown() => close < close[1] and hl2 < hl2[1] and close < pivot
+//barcolor(TrendingUp() ? color.green : TrendingDown() ? color.red : color.blue)
+
+trendUp() => TrendingUp() and TrendingDown()[1]
+trendDown() => TrendingDown() and TrendingUp()[1]
+
+// background color
+bgcolor(trendUp() ? color.green : trendDown() ? color.red : na)
+
+// buy, sell signals
+bearish = cross(close,pivot) == 1 and close[1] > close
+bullish = cross(close,pivot) == 1 and close[1] < close
+//plotshape(bearish, color=color.maroon, style=shape.arrowdown, text="Sell", location=location.abovebar)
+//plotshape(bullish, color=color.olive, style=shape.arrowup, text="Buy", location=location.belowbar)
+
+// strong buy, strong sell signals
+//verybearish = cross(close,pivot) == 2 and close[1] > close and TrendingDown()
+//verybullish = cross(close,pivot) == 2 and close[1] < close and TrendingUp()
+//plotshape(verybearish, color=color.fuchsia, style=shape.arrowdown, text="Sell", location=location.abovebar)
+//plotshape(verybullish, color=color.lime, style=shape.arrowup, text="Buy", location=location.belowbar)
