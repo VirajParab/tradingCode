@@ -21,14 +21,14 @@ async function createIndexIfNotPresentAndInsertData(data, date) {
                         "namespace": {"type": "text"},
                         "tid": {"type": "text"},
                         "shareSymbol": {"type": "text"},
-                        "netChg": {"type": "text"},
-                        "percentageChange": {"type": "text"},
-                        "prevClose": {"type": "text"},
-                        "tradedQty": {"type": "text"},
-                        "tradedValueLacks": {"type": "text"},
-                        "fFMarketCapital": {"type": "text"},
-                        "yearlyHigh": {"type": "text"},
-                        "yearlyLow": {"type": "text"},
+                        "netChg": {"type": "float"},
+                        "percentageChange": {"type": "float"},
+                        "prevClose": {"type": "float"},
+                        "tradedQty": {"type": "float"},
+                        "tradedValueLacks": {"type": "float"},
+                        "fFMarketCapital": {"type": "float"},
+                        "yearlyHigh": {"type": "float"},
+                        "yearlyLow": {"type": "float"},
                         "date": {"type": "date", "format": "dd-MM-yyyy"}
                     }
                 }
