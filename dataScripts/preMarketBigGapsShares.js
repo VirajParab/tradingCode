@@ -1,10 +1,13 @@
 const request = require("request")
 const csv = require("csv")
-const fs = require("fs")
 const client = require('./connection.js');
 
 // var url = "https://howutrade.in/snapdata/?data=PreOpen_ALL_05Sep2018&export=csv"
-let baseURL = "https://howutrade.in/snapdata/?data=PreOpen_ALL_"
+const baseURL = "https://howutrade.in/snapdata/?data=PreOpen_ALL_"
+const quantityThreshold = 10000;
+const tradeValueThresholdInLacks = 50;
+const yearlyHighThreshold = 50;
+const gapThreshold = 2.0
 
 const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const futureStocks = ["ACC", "ADANIENT", "ADANIPORTS", "AMARAJABAT", "AMBUJACEM", "APOLLOHOSP", "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "AUROPHARMA", "AXISBANK", "BAJAJ", "BAJFINANCE", "BAJAJFINSV", "BALKRISIND", "BANDHANBNK", "BANKNIFTY", "BANKBARODA", "BATAINDIA", "BERGEPAINT", "BEL", "BHARATFORG", "BHEL", "BPCL", "BHARTIARTL", "INFRATEL", "BIOCON", "BOSCHLTD", "BRITANNIA", "CADILAHC", "CANBK", "CHOLAFIN", "CIPLA", "COALINDIA", "COFORGE", "COLPAL", "CONCOR", "CUMMINSIND", "DABUR", "DIVISLAB", "DLF", "DRREDDY", "EICHERMOT", "ESCORTS", "EXIDEIND", "FEDERALBNK", "GAIL", "GLENMARK", "GMRINFRA", "GODREJCP", "GODREJPROP", "GRASIM", "HAVELLS", "HCLTECH", "HDFCBANK", "HDFCLIFE", "HEROMOTOCO", "HINDALCO", "HINDPETRO", "HINDUNILVR", "HDFC", "ITC", "ICICIBANK", "ICICIPRULI", "IDFCFIRSTB", "IBULHSGFIN", "IOC", "IGL", "INDUSINDBK", "NAUKRI", "INFY", "INDIGO", "JINDALSTEL", "JSWSTEEL", "FMCG", "KOTAKBANK", "L&TFH", "LT", "LICHSGFIN", "LUPIN", "MGL", "M&MFIN", "M&M", "MANAPPURAM", "MARICO", "MARUTI", "MFSL", "MINDTREE", "MOTHERSUMI", "MRF", "MUTHOOTFIN", "NATIONALUM", "NESTLEIND", "NMDC", "NTPC", "ONGC", "PAGEIND", "PETRONET", "PIDILITIND", "PEL", "PFC", "POWERGRID", "PNB", "PVR", "RBLBANK", "RECLTD", "RELIANCE", "NIFTY", "SBILIFE", "SHREECEM", "SRTRANSFIN", "SIEMENS", "SRF", "SBIN", "SAIL", "SUNPHARMA", "SUNTV", "TATACHEM", "TCS", "TATACONSUM", "TATAMOTORS", "TATAPOWER", "TATASTEEL", "TECHM", "RAMCOCEM", "TITAN", "TORNTPHARM", "TORNTPOWER", "TVSMOTOR", "ULTRACEMCO", "UBL", "MCDOWELL", "UPL", "VEDL", "IDEA", "VOLTAS", "WIPRO", "ZEEL"];
@@ -45,13 +48,17 @@ async function createIndexIfNotPresentAndInsertData(data, date) {
     });
 }
 
+function getFormatDate(date) {
+    return `${roundOfNumber(date.getDate())}-${roundOfNumber(date.getMonth() + 1)}-${date.getFullYear()}`;
+}
+
 function insertStockData(result, date) {
     const headers = result.slice(0, 1)[0];
     return result.forEach((stock, index) => {
         if (index === 0) {
             return;
         }
-        let formatDate = `${roundOfNumber(date.getDate())}-${roundOfNumber(date.getMonth()+1)}-${date.getFullYear()}`;
+        let formatDate = getFormatDate(date);
         let stockObject = {
             shareSymbol: stock[headers.indexOf("Symbol")],
             netChg: stock[headers.indexOf("NetChg")],
@@ -83,8 +90,64 @@ function insertDataInES(data, date) {
     });
 }
 
-const getHighGapShares = function (data) {
+function desc() {
+    return (s1, s2) => {
+        return s2.percentageChange - s1.percentageChange
+    };
+}
 
+const getHighGapShares = function (date) {
+    client.search({
+        index: indexName,
+        body:{
+            "size" : 20,
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "range": {
+                                "date": {
+                                    "gte": getFormatDate(date)
+                                }
+                            }
+                        },
+                        {
+                            "range": {
+                                "percentageChange": {
+                                    "gte": gapThreshold
+                                }
+                            }
+                        },
+                        {
+                            "range": {
+                                "tradedValueLacks": {
+                                    "gte": tradeValueThresholdInLacks
+                                }
+                            }
+                        },
+                        {
+                            "range": {
+                                "tradedQty": {
+                                    "gte": quantityThreshold
+                                }
+                            }
+                        },
+                        {
+                            "range": {
+                                "yearlyHigh": {
+                                    "gte": yearlyHighThreshold
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    }, (error, response) => {
+        let shares = response.hits.hits.map((share) => {return share['_source']});
+        shares.sort(desc);
+        console.log(shares);
+    })
 }
 
 function roundOfNumber(givenNumber) {
@@ -106,17 +169,23 @@ const getPreMarketData = function (date) {
         console.log(response.statusCode)
         if (!error && response.statusCode === 200) {
             insertDataInES(body, date);
-            getHighGapShares();
         } else {
             console.log("Error while fetching data", error);
         }
     })
 }
 
-// getPreMarketData(fs.readFileSync("./dummy_data.csv"), new Date("2020-08-31"));
+const main = function(){
+    const task = process.argv[2]
+    const date = process.argv[3]
+    // const toDate = process.argv[4]
 
-getPreMarketData(new Date("2020-09-02"));
+    if(task === "fetchData"){
+        getPreMarketData(new Date(date));
+    }else if(task === "listTopShares"){
+        getHighGapShares(new Date(date));
+    }
+}
 
-// createIndexIfNotPresentAndInsertData()
-//     .catch(console.log);
+main();
 
