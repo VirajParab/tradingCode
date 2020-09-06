@@ -1,57 +1,18 @@
-// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// © crazzycompiler
-//@version=1
-study("Moving Average Cross Alert, Multi-Timeframe Option (MTF) (by ChartArt)", shorttitle="CA_-_MA_cross", overlay=true)
-
-// Multi-timeframe and price input
-pricetype = input(close, title="Price Source For The Moving Averages")
-useCurrentRes = input(true, title="Use Current Timeframe As Resolution?")
-resCustom = input(title="Use Different Timeframe? Then Uncheck The Box Above", type=resolution, defval="W")
-res = useCurrentRes ? period : resCustom
-price = security(tickerid, res, pricetype)
-
-// MA period input
-shortperiod = input(50, title="Short Period Moving Average")
-longperiod = input(100, title="Long Period Moving Average")
-
-// MA calculation
-smoothinput = input(2, minval=1, maxval=4, title='Moving Average Calculation: (1 = SMA), (2 = EMA), (3 = WMA), (4 = Linear)')
-short = smoothinput == 1 ? sma(price, shortperiod) :
-    smoothinput == 2 ? ema(price, shortperiod) :
-    smoothinput == 3 ? wma(price, shortperiod) :
-    smoothinput == 4 ? linreg(price, shortperiod,0) :
-    na
-long = smoothinput == 1 ? sma(price, longperiod) :
-    smoothinput == 2 ? ema(price, longperiod) :
-    smoothinput == 3 ? wma(price, longperiod) :
-    smoothinput == 4 ? linreg(price, longperiod,0) :
-    na
-
-// MA trend direction color
-shortcolor = short > short[1] ? lime : short < short[1] ? red : blue
-longcolor = long > long[1] ? lime : long < long[1] ? red : blue
-
-// MA output
-MA1 = plot(short, title="Short Period Moving Average", style=linebr, linewidth=2, color=shortcolor)
-MA2 = plot(long, title="Long Period Moving Average", style=linebr, linewidth=4, color=longcolor)
-fill(MA1, MA2, color=silver, transp=50)
-
-// MA trend bar color
-TrendingUp() => short > long
-TrendingDown() => short < long
-barcolor(TrendingUp() ? green : TrendingDown() ? red : blue)
-
-// MA cross alert
-MAcrossing = cross(short, long) ? short : na
-plot(MAcrossing, style = cross, linewidth = 4,color=black)
-
-// MA cross background color alert
-Uptrend() => TrendingUp() and TrendingDown()[1]
-Downtrend() => TrendingDown() and TrendingUp()[1]
-bgcolor(Uptrend() ? green : Downtrend() ? red : na,transp=50)
-
-// Buy and sell alert
-Buy = Uptrend() and close > close[1]
-Sell = Downtrend() and close < close[1]
-plotshape(Buy, color=black, style=shape.arrowup, text="Buy", location=location.bottom)
-plotshape(Sell, color=black, style=shape.arrowdown, text="Sell", location=location.top)
+//@version=3
+study("VWMA/SMA Breakout Detector", overlay=true)
+//                  INPUTS:
+lenFastVWMA = input(13, title="Fast VWMA Length", minval=1)
+lenSlowVWMA = input(26, title="Slow VWMA Length", minval=1)
+lenFastSMA = input(13, title="Fast SMA Length", minval=1)
+lenSlowSMA = input(26, title="Slow SMA Length", minval=1)
+src = input(type=source, title="Source", defval=close)
+fastSMA = sma(src, lenFastSMA)
+slowSMA = sma(src, lenSlowSMA)
+fastVWMA = vwma(src, lenFastVWMA)
+slowVWMA = vwma(src, lenSlowVWMA)
+s0 = plot(slowSMA, title="Slow SMA", color=red, linewidth=2)
+v0 = plot(slowVWMA, title="Slow VWMA", color=green, linewidth=2)
+s1 = plot(fastSMA, title="Fast SMA", color=fuchsia,linewidth=2, style=circles)
+v1 = plot(fastVWMA, title="Fast VWMA", color=teal, linewidth=2, style=circles)
+fill(s0, v0, color=slowSMA < slowVWMA ? green : red, transp=70)
+fill(s1, v1, color=fastSMA < fastVWMA ? teal : fuchsia, transp=80)
