@@ -1,30 +1,7 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © crazzycompiler
+//@version=1
 study("Moving Average Cross Alert, Multi-Timeframe Option (MTF) (by ChartArt)", shorttitle="CA_-_MA_cross", overlay=true)
-
-// ChartArt's Moving Average Cross Indicator
-//
-// Version 1.0
-// Idea by ChartArt on September 15, 2015.
-//
-// This indicator shows when two moving averages cross.
-// With the option to choose between four moving
-// average calculations:
-// (SMA = simple moving average)
-// (EMA = exponential moving average)
-// (WMA = weighted moving average)
-// (Linear = Linear regression)
-//
-// The moving averages can be plotted from different
-// timeframes, like the weekly or 4 hour timeframe.
-// With the possibility to use HL2, HLC3 or OHLC4 prices.
-//
-// In addition there is a background color alert
-// and arrows when the moving averages cross each other.
-// And the moving averages are colored depending if
-// they are trending up or down.
-//
-// List of my work:
-// https://www.tradingview.com/u/ChartArt/
-
 
 // Multi-timeframe and price input
 pricetype = input(close, title="Price Source For The Moving Averages")
