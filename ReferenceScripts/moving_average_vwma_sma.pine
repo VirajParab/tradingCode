@@ -1,4 +1,4 @@
-//@version=3
+//@version=1
 study("VWMA/SMA Breakout Detector", overlay=true)
 //                  INPUTS:
 lenFastVWMA = input(13, title="Fast VWMA Length", minval=1)
