@@ -13,7 +13,7 @@
 //      - When both the moving averages gives buy condition
 
 
-strategy("Moving verage cross with Chaikin", "MA_cross_chaikin_strategy", overlay = true, calc_on_every_tick=true)
+strategy("Moving average cross with Chaikin", "MA_cross_chaikin_strategy", overlay = true, calc_on_every_tick=true)
 
 
 //Time window for strategy
@@ -33,7 +33,7 @@ window()  => time >= start and time <= finish ? true : false       // create fun
 
 // Moving averages cross
 // Multi-timeframe and price input
-pricetype = input(close, title="Price Source For The Moving Averages")
+pricetype = input(ohlc4, title="Price Source For The Moving Averages")
 res = timeframe.period
 price = security(syminfo.tickerid, res, pricetype)
 
