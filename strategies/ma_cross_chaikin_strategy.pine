@@ -13,7 +13,7 @@
 //      - When both the moving averages gives buy condition
 
 
-strategy("Moving average cross with Chaikin", "MA_cross_chaikin_strategy", overlay = true, calc_on_every_tick=true)
+strategy("Moving average cross with Chaikin","MA_cross_chaikin_strategy", pyramiding = 10, default_qty_value = 50, overlay = true, initial_capital=50000, default_qty_type = strategy.cash, commission_type =  strategy.commission.cash_per_order, commission_value = 300, calc_on_every_tick=true)
 
 
 //Time window for strategy
@@ -109,19 +109,22 @@ Downtrend() => TrendingDown() and TrendingUp()[1] and osc[0] < osc[1]
 bgcolor(Uptrend() ? color.green : Downtrend() ? color.red : na,transp=50)
 
 //exits depending on two green or red ma
-SellExit() => shortBuy() and longBuy()
-BuyExit() => shortSell() and longSell()
+SellExitBasedOnMA() => shortBuy() and longBuy()
+BuyExitBasedOnMA() => shortSell() and longSell()
 
 // Buy and sell alert
-Buy = Uptrend() and close > close[1] and SellExit()
-Sell = Downtrend() and close < close[1] and BuyExit()
+Buy = Uptrend() and close > close[1] and SellExitBasedOnMA()
+Sell = Downtrend() and close < close[1] and BuyExitBasedOnMA()
 
 plotshape(Buy, color=color.black, style=shape.arrowup, text="Buy", location=location.bottom)
 plotshape(Sell, color=color.black, style=shape.arrowdown, text="Sell", location=location.top)
 
 //exits based on chaikin
-//BuyExit = osc[0] < osc[1] and osc[1] < osc[2]
-//SellExit = osc[0] > osc[1] and osc[1] > osc[2]
+BuyExitBasedOnOSC() => osc < osc[1] and osc[1] < osc[2]
+SellExitBasedOnOSC() => osc > osc[1] and osc[1] > osc[2]
+
+BuyExit() => BuyExitBasedOnMA() or BuyExitBasedOnOSC()
+SellExit() => SellExitBasedOnMA() or SellExitBasedOnOSC()
 
 quanitity = input(50, "Quanitity input")
 
