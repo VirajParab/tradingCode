@@ -131,16 +131,14 @@ quanitity = input(50, "Quanitity input")
 if Uptrend() and window()
 	strategy.entry("buy", strategy.long, quanitity)
 
-
-strategy.exit("exit", "buy", when = BuyExit())
+if BuyExit()
+    strategy.close("buy")
 
 if Downtrend() and window()
 	strategy.entry("sell", strategy.short, quanitity)
-strategy.exit("exit", "sell", when = SellExit())
 
-//plotshape(BuyExit, color=color.black, style=shape.arrowup, text="BuyExit", location=location.bottom)
-//plotshape(SellExit, color=color.black, style=shape.arrowdown, text="SellExit", location=location.top)
-
+if SellExit()
+    strategy.close("sell")
 
 //Exit at the end of day everyday
 
@@ -149,5 +147,10 @@ t = time(timeframe.period, intraday_sess)
 sess_over = not na(t[1]) and na(t)
 strategy.close_all(when = sess_over)
 
-//plotchar(shortBuy() and longBuy(),"buy")
-//plotchar(shortSell() and longSell(),"sell")
+// plotchar(BuyExit(),"BuyExit")
+// plotchar(SellExit(),"SellExit")
+
+// plotchar(BuyExitBasedOnMA(), "BuyExitBasedOnMA")
+// plotchar(BuyExitBasedOnOSC(), "BuyExitBasedOnOSC")
+// plotchar(SellExitBasedOnMA(), "SellExitBasedOnMA")
+// plotchar(SellExitBasedOnOSC(), "SellExitBasedOnOSC")
