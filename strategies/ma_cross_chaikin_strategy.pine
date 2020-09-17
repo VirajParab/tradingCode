@@ -39,14 +39,14 @@ price = security(syminfo.tickerid, res, pricetype)
 
 // MA period input
 shortperiod = input(5, title="Short Period Moving Average")
-longperiod = input(13, title="Long Period Moving Average")
+longperiod = input(12, title="Long Period Moving Average")
 
 // MA calculation
 //smoothinput = input(3, minval=1, maxval=4, title='Moving Average Calculation: (1 = SMA), (2 = EMA), (3 = WMA), (4 = Linear)')
 
-short = ema(price, shortperiod)
+short = wma(price, shortperiod)
 
-long = ema(price, longperiod)
+long = wma(price, longperiod)
 
 //short = if smoothinput == 1
 //		sma(price, shortperiod)
