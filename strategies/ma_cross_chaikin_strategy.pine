@@ -13,26 +13,40 @@
 //      - When both the moving averages gives buy condition
 
 
-strategy("Moving verage cross with Chaikin", "MA_cross_chaikin_strategy", overlay = true)
+strategy("Moving verage cross with Chaikin", "MA_cross_chaikin_strategy", overlay = true, calc_on_every_tick=true)
+
+
+//Time window for strategy
+
+// === INPUT BACKTEST RANGE ===
+fromDay   = input(defval = 1,    title = "From Day",        type = input.integer, minval = 1, maxval = 31)
+fromMonth = input(defval = 9,    title = "From Month",      type = input.integer, minval = 1, maxval = 12)
+fromYear  = input(defval = 2020, title = "From Year",       type = input.integer, minval = 1970)
+thruDay   = input(defval = 15,    title = "Thru Day",        type = input.integer, minval = 1, maxval = 31)
+thruMonth = input(defval = 9,    title = "Thru Month",      type = input.integer, minval = 1, maxval = 12)
+thruYear  = input(defval = 2020, title = "Thru Year",       type = input.integer, minval = 1970)
+
+// === FUNCTION EXAMPLE ===
+start     = timestamp(fromYear, fromMonth, fromDay, 00, 00)        // backtest start window
+finish    = timestamp(thruYear, thruMonth, thruDay, 23, 59)        // backtest finish window
+window()  => time >= start and time <= finish ? true : false       // create function "within window of time"
 
 // Moving averages cross
 // Multi-timeframe and price input
 pricetype = input(close, title="Price Source For The Moving Averages")
-useCurrentRes = input(true, title="Use Current Timeframe As Resolution?")
-resCustom = input(title="Use Different Timeframe? Then Uncheck The Box Above", type=resolution, defval="W")
-res = useCurrentRes ? period : resCustom
-price = security(tickerid, res, pricetype)
+res = timeframe.period
+price = security(syminfo.tickerid, res, pricetype)
 
 // MA period input
-shortperiod = input(50, title="Short Period Moving Average")
-longperiod = input(100, title="Long Period Moving Average")
+shortperiod = input(5, title="Short Period Moving Average")
+longperiod = input(13, title="Long Period Moving Average")
 
 // MA calculation
-smoothinput = input(2, minval=1, maxval=4, title='Moving Average Calculation: (1 = SMA), (2 = EMA), (3 = WMA), (4 = Linear)')
+//smoothinput = input(3, minval=1, maxval=4, title='Moving Average Calculation: (1 = SMA), (2 = EMA), (3 = WMA), (4 = Linear)')
 
-short = sma(price, shortperiod)
+short = ema(price, shortperiod)
 
-
+long = ema(price, longperiod)
 
 //short = if smoothinput == 1
 //		sma(price, shortperiod)
@@ -57,30 +71,80 @@ short = sma(price, shortperiod)
 //		na
 
 // MA trend direction color
-shortcolor = short > short[1] ? lime : short < short[1] ? red : blue
-longcolor = long > long[1] ? lime : long < long[1] ? red : blue
+shortBuy() => short > short[1]
+longBuy() => long > long[1]
+shortSell() => short < short[1] 
+longSell() => long < long[1]
+shortcolor = shortBuy() ? color.lime : shortSell() ? color.red : color.blue
+longcolor = longBuy() ? color.lime : longSell() ? color.red : color.blue
 
 // MA output
-MA1 = plot(short, title="Short Period Moving Average", style=linebr, linewidth=2, color=shortcolor)
-MA2 = plot(long, title="Long Period Moving Average", style=linebr, linewidth=4, color=longcolor)
-fill(MA1, MA2, color=silver, transp=50)
+MA1 = plot(short, title="Short Period Moving Average", style=plot.style_linebr, linewidth=2, color=shortcolor)
+MA2 = plot(long, title="Long Period Moving Average", style=plot.style_linebr, linewidth=4, color=longcolor)
+fill(MA1, MA2, color=color.silver, transp=50)
 
 // MA trend bar color
-TrendingUp() => short > long
+TrendingUp() => short > long 
 TrendingDown() => short < long
-barcolor(TrendingUp() ? green : TrendingDown() ? red : blue)
+//barcolor(TrendingUp() ? color.green : TrendingDown() ? color.red : color.blue)
+
+
+// Chaikin oscillator code
+
+chaikinShort = input(3, minval=1, title="Chaikin Fast Length")
+chaikinLong = input(10, minval=1, title="Chaikin Slow Length")
+osc = ema(accdist, chaikinShort) - ema(accdist, chaikinLong)
+//plot(osc, title="Chaikin Oscillator", color=#FF8080)
+//hline(0, title="Zero", color=#606060, linestyle=hline.style_dashed)
+
+// Chaikin oscillator code done
 
 // MA cross alert
 MAcrossing = cross(short, long) ? short : na
-plot(MAcrossing, style = cross, linewidth = 4,color=black)
+plot(MAcrossing, style = plot.style_cross, linewidth = 4,color=color.black)
 
 // MA cross background color alert
-Uptrend() => TrendingUp() and TrendingDown()[1]
-Downtrend() => TrendingDown() and TrendingUp()[1]
-bgcolor(Uptrend() ? green : Downtrend() ? red : na,transp=50)
+Uptrend() => TrendingUp() and TrendingDown()[1] and osc[0] > osc[1]
+Downtrend() => TrendingDown() and TrendingUp()[1] and osc[0] < osc[1]
+bgcolor(Uptrend() ? color.green : Downtrend() ? color.red : na,transp=50)
+
+//exits depending on two green or red ma
+SellExit() => shortBuy() and longBuy()
+BuyExit() => shortSell() and longSell()
 
 // Buy and sell alert
-Buy = Uptrend() and close > close[1]
-Sell = Downtrend() and close < close[1]
-plotshape(Buy, color=black, style=shape.arrowup, text="Buy", location=location.bottom)
-plotshape(Sell, color=black, style=shape.arrowdown, text="Sell", location=location.top)
+Buy = Uptrend() and close > close[1] and SellExit()
+Sell = Downtrend() and close < close[1] and BuyExit()
+
+plotshape(Buy, color=color.black, style=shape.arrowup, text="Buy", location=location.bottom)
+plotshape(Sell, color=color.black, style=shape.arrowdown, text="Sell", location=location.top)
+
+//exits based on chaikin
+//BuyExit = osc[0] < osc[1] and osc[1] < osc[2]
+//SellExit = osc[0] > osc[1] and osc[1] > osc[2]
+
+quanitity = input(50, "Quanitity input")
+
+if Uptrend() and window()
+	strategy.entry("buy", strategy.long, quanitity)
+
+
+strategy.exit("exit", "buy", when = BuyExit())
+
+if Downtrend() and window()
+	strategy.entry("sell", strategy.short, quanitity)
+strategy.exit("exit", "sell", when = SellExit())
+
+//plotshape(BuyExit, color=color.black, style=shape.arrowup, text="BuyExit", location=location.bottom)
+//plotshape(SellExit, color=color.black, style=shape.arrowdown, text="SellExit", location=location.top)
+
+
+//Exit at the end of day everyday
+
+intraday_sess = "0915-1500"
+t = time(timeframe.period, intraday_sess)
+sess_over = not na(t[1]) and na(t)
+strategy.close_all(when = sess_over)
+
+//plotchar(shortBuy() and longBuy(),"buy")
+//plotchar(shortSell() and longSell(),"sell")
