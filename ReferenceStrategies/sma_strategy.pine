@@ -1,0 +1,66 @@
+//@version=4
+
+strategy(title="Simple SMA Strategy Backtest", shorttitle="SMA Backtest", precision=6, default_qty_value = 50, overlay = true, initial_capital=50000, default_qty_type = strategy.cash, commission_type =  strategy.commission.percent, commission_value = 0.05, calc_on_every_tick=true)
+//Time window for strategy
+
+// === INPUT BACKTEST RANGE ===
+fromDay   = input(defval = 1,    title = "From Day",        type = input.integer, minval = 1, maxval = 31)
+fromMonth = input(defval = 3,    title = "From Month",      type = input.integer, minval = 1, maxval = 12)
+fromYear  = input(defval = 2020, title = "From Year",       type = input.integer, minval = 1970)
+thruDay   = input(defval = 15,    title = "Thru Day",        type = input.integer, minval = 1, maxval = 31)
+thruMonth = input(defval = 9,    title = "Thru Month",      type = input.integer, minval = 1, maxval = 12)
+thruYear  = input(defval = 2020, title = "Thru Year",       type = input.integer, minval = 1970)
+
+// === FUNCTION EXAMPLE ===
+start     = timestamp(fromYear, fromMonth, fromDay, 00, 00)        // backtest start window
+finish    = timestamp(thruYear, thruMonth, thruDay, 23, 59)        // backtest finish window
+window()  => time >= start and time <= finish ? true : false       // create function "within window of time"
+
+
+
+//Exit at the end of day everyday
+
+intraday_sess = "0915-1500"
+t = time(timeframe.period, intraday_sess)
+sess_over = not na(t[1]) and na(t)
+strategy.close_all(when = sess_over)
+
+Resolution = input(title="Resolution", type=input.resolution, defval="D")
+Source = input(title="Source", type=input.source, defval=close)
+xSeries = security(syminfo.tickerid, Resolution, Source)
+Length = input(title="Length", type=input.integer, defval=14, minval=2)
+TriggerPrice = input(title="Trigger Price", type=input.source, defval=close)
+TakeProfit = input(50, title="Take Profit", step=0.01)
+StopLoss = input(20, title="Stop Loss", step=0.01)
+UseTPSL = input(title="Use Take\Stop", type=input.bool, defval=false)
+BarColors = input(title="Painting bars", type=input.bool, defval=true)
+ShowLine = input(title="Show Line", type=input.bool, defval=true)
+UseAlerts = input(title="Use Alerts", type=input.bool, defval=false)
+reverse = input(title="Trade Reverse", type=input.bool, defval=false)
+pos = 0
+xSMA = sma(xSeries, Length)
+pos := iff(TriggerPrice > xSMA, 1,
+         iff(TriggerPrice < xSMA, -1, nz(pos[1], 0)))
+nRes = ShowLine ? xSMA : na
+alertcondition(UseAlerts == true and pos != pos[1] and pos == 1, title='Signal Buy', message='Strategy to change to BUY')
+alertcondition(UseAlerts == true and pos != pos[1] and pos == -1, title='Signal Sell', message='Strategy to change to SELL')
+alertcondition(UseAlerts == true and pos != pos[1] and pos == 0, title='FLAT', message='Strategy get out from position')
+possig =iff(pos[1] != pos,
+         iff(reverse and pos == 1, -1,
+           iff(reverse and pos == -1, 1, pos)), 0)
+
+quanitity = input(50, "Quanitity input")
+
+if (possig == 1 and window())
+    strategy.entry("Long", strategy.long, quanitity)
+if (possig == -1 and window())
+    strategy.entry("Short", strategy.short, quanitity)
+    
+if (UseTPSL)    
+    strategy.close("Long", when = high > strategy.position_avg_price + TakeProfit, comment = "close buy take profit")
+    strategy.close("Long", when = low < strategy.position_avg_price - StopLoss, comment = "close buy stop loss")
+    strategy.close("Short", when = low < strategy.position_avg_price - TakeProfit, comment = "close buy take profit")
+    strategy.close("Short", when = high > strategy.position_avg_price + StopLoss, comment = "close buy stop loss")
+nColor = BarColors ? strategy.position_avg_price != 0  and pos == 1 ? color.green :strategy.position_avg_price != 0 and pos == -1 ? color.red : color.blue : na
+barcolor(nColor)
+plot(nRes, title='SMA', color=#00ffaa, linewidth=2, style=plot.style_line)

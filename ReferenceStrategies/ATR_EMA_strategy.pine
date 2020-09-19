@@ -1,0 +1,68 @@
+//@version=4
+strategy(title="ATR + EMA Strategy", default_qty_value = 50, overlay = true, initial_capital=50000, default_qty_type = strategy.cash, commission_type =  strategy.commission.percent, commission_value = 0.05, calc_on_every_tick=true)
+
+//Time window for strategy
+
+// === INPUT BACKTEST RANGE ===
+fromDay   = input(defval = 1,    title = "From Day",        type = input.integer, minval = 1, maxval = 31)
+fromMonth = input(defval = 3,    title = "From Month",      type = input.integer, minval = 1, maxval = 12)
+fromYear  = input(defval = 2020, title = "From Year",       type = input.integer, minval = 1970)
+thruDay   = input(defval = 15,    title = "Thru Day",        type = input.integer, minval = 1, maxval = 31)
+thruMonth = input(defval = 9,    title = "Thru Month",      type = input.integer, minval = 1, maxval = 12)
+thruYear  = input(defval = 2020, title = "Thru Year",       type = input.integer, minval = 1970)
+
+// === FUNCTION EXAMPLE ===
+start     = timestamp(fromYear, fromMonth, fromDay, 00, 00)        // backtest start window
+finish    = timestamp(thruYear, thruMonth, thruDay, 23, 59)        // backtest finish window
+window()  => time >= start and time <= finish ? true : false       // create function "within window of time"
+
+
+
+// Inputs
+a = input(1,     title = "Key Vaule. 'This changes the sensitivity'")
+c = input(10,    title = "ATR Period")
+h = input(true, title = "Signals from Heikin Ashi Candles")
+
+xATR  = atr(c)
+nLoss = a * xATR
+
+src = h ? security(heikinashi(syminfo.tickerid), timeframe.period, close, lookahead = false) : close
+
+xATRTrailingStop = 0.0
+xATRTrailingStop := iff(src > nz(xATRTrailingStop[1], 0) and src[1] > nz(xATRTrailingStop[1], 0), max(nz(xATRTrailingStop[1]), src - nLoss),
+   iff(src < nz(xATRTrailingStop[1], 0) and src[1] < nz(xATRTrailingStop[1], 0), min(nz(xATRTrailingStop[1]), src + nLoss), 
+   iff(src > nz(xATRTrailingStop[1], 0), src - nLoss, src + nLoss)))
+ 
+pos = 0   
+pos :=	iff(src[1] < nz(xATRTrailingStop[1], 0) and src > nz(xATRTrailingStop[1], 0), 1,
+   iff(src[1] > nz(xATRTrailingStop[1], 0) and src < nz(xATRTrailingStop[1], 0), -1, nz(pos[1], 0))) 
+   
+xcolor = pos == -1 ? color.red: pos == 1 ? color.green : color.blue 
+
+ema   = ema(src,1)
+above = crossover(ema, xATRTrailingStop)
+below = crossover(xATRTrailingStop, ema)
+
+buy  = src > xATRTrailingStop and above 
+sell = src < xATRTrailingStop and below
+
+barbuy  = src > xATRTrailingStop 
+barsell = src < xATRTrailingStop 
+
+plotshape(buy,  title = "Buy",  text = 'Buy',  style = shape.labelup,   location = location.belowbar, color= color.green, textcolor = color.white, transp = 0, size = size.tiny)
+plotshape(sell, title = "Sell", text = 'Sell', style = shape.labeldown, location = location.abovebar, color= color.red,   textcolor = color.white, transp = 0, size = size.tiny)
+
+barcolor(barbuy  ? color.green : na)
+barcolor(barsell ? color.red   : na)
+
+quanitity = input(50, "Quanitity input")
+
+strategy.entry("long",   true, quanitity, when = buy and window())
+strategy.entry("short", false, quanitity, when = sell and window())
+
+//Exit at the end of day everyday
+
+intraday_sess = "0915-1500"
+t = time(timeframe.period, intraday_sess)
+sess_over = not na(t[1]) and na(t)
+strategy.close_all(when = sess_over)
