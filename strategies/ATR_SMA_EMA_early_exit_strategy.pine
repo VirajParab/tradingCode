@@ -1,0 +1,90 @@
+//@version=4
+strategy(title="ATR + EMA + SMA Strategy", default_qty_value = 50, overlay = true, initial_capital=50000, default_qty_type = strategy.cash, commission_type =  strategy.commission.percent, commission_value = 0.05)
+
+
+//Time window for strategy
+
+// === INPUT BACKTEST RANGE ===
+fromDay   = input(defval = 1,    title = "From Day",        type = input.integer, minval = 1, maxval = 31)
+fromMonth = input(defval = 9,    title = "From Month",      type = input.integer, minval = 1, maxval = 12)
+fromYear  = input(defval = 2020, title = "From Year",       type = input.integer, minval = 1970)
+thruDay   = input(defval = 19,    title = "Thru Day",        type = input.integer, minval = 1, maxval = 31)
+thruMonth = input(defval = 9,    title = "Thru Month",      type = input.integer, minval = 1, maxval = 12)
+thruYear  = input(defval = 2020, title = "Thru Year",       type = input.integer, minval = 1970)
+
+// === FUNCTION EXAMPLE ===
+start     = timestamp(fromYear, fromMonth, fromDay, 00, 00)        // backtest start window
+finish    = timestamp(thruYear, thruMonth, thruDay, 23, 59)        // backtest finish window
+window()  => time >= start and time <= finish ? true : false       // create function "within window of time"
+
+//Exit at the end of day everyday
+
+intraday_sess = "0915-1500"
+t = time(timeframe.period, intraday_sess)
+sess_over = not na(t[1]) and na(t)
+strategy.close_all(when = sess_over)
+
+Source = input(title="Source", type=input.source, defval=close)
+xSeries = security(syminfo.tickerid, timeframe.period, Source)
+smaLength = input(title="sma Length", type=input.integer, defval=14, minval=2)
+emaLength = input(title="ema Length", type=input.integer, defval=17, minval=1)
+TriggerPrice = input(title="Trigger Price", type=input.source, defval=close)
+ShowLine = input(title="Show Line", type=input.bool, defval=true)
+PlaySafe = input(title="Play safe", type=input.bool, defval=false)
+
+atrSensitivity = input(1,     title = "Key Vaule. 'This changes the sensitivity'")
+atrPeriod = input(15,    title = "ATR Period")
+
+xATR  = atr(atrPeriod)
+
+nLoss = atrSensitivity * xATR
+
+xATRTrailingStop = 0.0
+xATRTrailingStop := iff(xSeries > nz(xATRTrailingStop[1], 0) and xSeries[1] > nz(xATRTrailingStop[1], 0), max(nz(xATRTrailingStop[1]), xSeries - nLoss),
+   iff(xSeries < nz(xATRTrailingStop[1], 0) and xSeries[1] < nz(xATRTrailingStop[1], 0), min(nz(xATRTrailingStop[1]), xSeries + nLoss), 
+   iff(xSeries > nz(xATRTrailingStop[1], 0), xSeries - nLoss, xSeries + nLoss)))
+
+reverse = false
+
+pos = 0
+xSMA = ema(xSeries, smaLength)
+ema   = ema(xSeries,emaLength)
+above = crossover(ema, xATRTrailingStop)
+below = crossover(xATRTrailingStop, ema)
+
+pos := iff(TriggerPrice > xSMA, 1,
+         iff(TriggerPrice < xSMA, -1, nz(pos[1], 0)))
+nRes = ShowLine ? xSMA : na
+possig =iff(pos[1] != pos,
+         iff(reverse and pos == 1, -1,
+           iff(reverse and pos == -1, 1, pos)), 0)
+
+quanitity = input(50, "Quanitity input")
+
+
+buy() => PlaySafe ? possig == 1  and xSeries > xATRTrailingStop and above : (possig == 1)  or (xSeries > xATRTrailingStop and above)
+
+sell() =>  PlaySafe ? possig == -1 and xSeries < xATRTrailingStop and below : (possig == -1) or (xSeries < xATRTrailingStop and below)
+
+
+//TODO: use 101 trading system using pivots points
+
+// pivot
+pivot = (high + low + close ) / 3.0
+
+// buy, sell signals
+bearish() => cross(close,pivot) == 1 and close[1] > close
+bullish() => cross(close,pivot) == 1 and close[1] < close
+plotshape(bearish, color=color.maroon, style=shape.arrowdown, text="Sell", location=location.abovebar)
+plotshape(bullish, color=color.olive, style=shape.arrowup, text="Buy", location=location.belowbar)
+
+if (buy() and window())
+    strategy.entry("Long", strategy.long, quanitity)
+if (sell() and window())
+    strategy.entry("Short", strategy.short, quanitity)
+
+strategy.close("Long", when = bearish(), comment = "Long Exit due to bearish pattern")
+strategy.close("Short", when = bullish(),  comment = "Short Exit due to bullish pattern")
+
+
+plot(nRes, title='SMA', color=#00ffaa, linewidth=2, style=plot.style_line)
