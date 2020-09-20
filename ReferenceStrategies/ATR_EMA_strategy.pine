@@ -17,7 +17,6 @@ finish    = timestamp(thruYear, thruMonth, thruDay, 23, 59)        // backtest f
 window()  => time >= start and time <= finish ? true : false       // create function "within window of time"
 
 
-
 // Inputs
 a = input(1,     title = "Key Vaule. 'This changes the sensitivity'")
 c = input(10,    title = "ATR Period")

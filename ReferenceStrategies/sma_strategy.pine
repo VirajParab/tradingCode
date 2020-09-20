@@ -25,20 +25,15 @@ t = time(timeframe.period, intraday_sess)
 sess_over = not na(t[1]) and na(t)
 strategy.close_all(when = sess_over)
 
-Resolution = input(title="Resolution", type=input.resolution, defval="D")
 Source = input(title="Source", type=input.source, defval=close)
-xSeries = security(syminfo.tickerid, Resolution, Source)
-Length = input(title="Length", type=input.integer, defval=14, minval=2)
+xSeries = security(syminfo.tickerid, timeframe.period, Source)
+Length = input(title="Length", type=input.integer, defval=28, minval=2)
 TriggerPrice = input(title="Trigger Price", type=input.source, defval=close)
-TakeProfit = input(50, title="Take Profit", step=0.01)
-StopLoss = input(20, title="Stop Loss", step=0.01)
-UseTPSL = input(title="Use Take\Stop", type=input.bool, defval=false)
-BarColors = input(title="Painting bars", type=input.bool, defval=true)
 ShowLine = input(title="Show Line", type=input.bool, defval=true)
 UseAlerts = input(title="Use Alerts", type=input.bool, defval=false)
-reverse = input(title="Trade Reverse", type=input.bool, defval=false)
+reverse = false
 pos = 0
-xSMA = sma(xSeries, Length)
+xSMA = ema(xSeries, Length)
 pos := iff(TriggerPrice > xSMA, 1,
          iff(TriggerPrice < xSMA, -1, nz(pos[1], 0)))
 nRes = ShowLine ? xSMA : na
@@ -55,12 +50,5 @@ if (possig == 1 and window())
     strategy.entry("Long", strategy.long, quanitity)
 if (possig == -1 and window())
     strategy.entry("Short", strategy.short, quanitity)
-    
-if (UseTPSL)    
-    strategy.close("Long", when = high > strategy.position_avg_price + TakeProfit, comment = "close buy take profit")
-    strategy.close("Long", when = low < strategy.position_avg_price - StopLoss, comment = "close buy stop loss")
-    strategy.close("Short", when = low < strategy.position_avg_price - TakeProfit, comment = "close buy take profit")
-    strategy.close("Short", when = high > strategy.position_avg_price + StopLoss, comment = "close buy stop loss")
-nColor = BarColors ? strategy.position_avg_price != 0  and pos == 1 ? color.green :strategy.position_avg_price != 0 and pos == -1 ? color.red : color.blue : na
-barcolor(nColor)
+
 plot(nRes, title='SMA', color=#00ffaa, linewidth=2, style=plot.style_line)
