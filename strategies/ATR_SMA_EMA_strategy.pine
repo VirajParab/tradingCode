@@ -25,10 +25,9 @@ sess_over = not na(t[1]) and na(t)
 strategy.close_all(when = sess_over)
 
 Source = input(title="Source", type=input.source, defval=close)
-xSeries = security(syminfo.tickerid, timeframe.period, Source)
+priceList = security(syminfo.tickerid, timeframe.period, Source)
 smaLength = input(title="sma Length", type=input.integer, defval=13, minval=2)
 TriggerPrice = input(title="Trigger Price", type=input.source, defval=close)
-ShowLine = input(title="Show Line", type=input.bool, defval=true)
 PlaySafe = input(title="Play safe", type=input.bool, defval=false)
 
 atrSensitivity = input(7,     title = "Key Vaule. 'This changes the sensitivity'")
@@ -39,34 +38,33 @@ xATR  = atr(atrPeriod)
 nLoss = atrSensitivity * xATR
 
 xATRTrailingStop = 0.0
-xATRTrailingStop := iff(xSeries > nz(xATRTrailingStop[1], 0) and xSeries[1] > nz(xATRTrailingStop[1], 0), max(nz(xATRTrailingStop[1]), xSeries - nLoss),
-   iff(xSeries < nz(xATRTrailingStop[1], 0) and xSeries[1] < nz(xATRTrailingStop[1], 0), min(nz(xATRTrailingStop[1]), xSeries + nLoss), 
-   iff(xSeries > nz(xATRTrailingStop[1], 0), xSeries - nLoss, xSeries + nLoss)))
 
-reverse = false
+// isLastTwoPricesGreaterThanStop() => priceList > nz(xATRTrailingStop[1], 0) and priceList[1] > nz(xATRTrailingStop[1], 0)
+// isLastTwoPricesSmallerThanStop() => priceList < nz(xATRTrailingStop[1], 0) and priceList[1] < nz(xATRTrailingStop[1], 0)
+// isPriceGreaterThanStop() => priceList > nz(xATRTrailingStop[1], 0)
 
+xATRTrailingStop := iff(priceList > nz(xATRTrailingStop[1], 0) and priceList[1] > nz(xATRTrailingStop[1], 0), max(nz(xATRTrailingStop[1]), priceList - nLoss),
+   iff(priceList < nz(xATRTrailingStop[1], 0) and priceList[1] < nz(xATRTrailingStop[1], 0), min(nz(xATRTrailingStop[1]), priceList + nLoss), 
+   iff(priceList > nz(xATRTrailingStop[1], 0), priceList - nLoss, priceList + nLoss)))
+   
 pos = 0
-xSMA = ema(xSeries, smaLength)
+xSMA = ema(priceList, smaLength)
 above = crossover(xSMA, xATRTrailingStop)
 below = crossover(xATRTrailingStop, xSMA)
 
 pos := iff(TriggerPrice > xSMA, 1,
          iff(TriggerPrice < xSMA, -1, nz(pos[1], 0)))
-nRes = ShowLine ? xSMA : na
-possig =iff(pos[1] != pos,
-         iff(reverse and pos == 1, -1,
-           iff(reverse and pos == -1, 1, pos)), 0)
+possig =iff(pos[1] != pos, pos, 0)
 
 quanitity = input(50, "Quanitity input")
 
+buy() => PlaySafe ? possig == 1  and priceList > xATRTrailingStop and above : (possig == 1)  or (priceList > xATRTrailingStop and above)
 
-buy() => PlaySafe ? possig == 1  and xSeries > xATRTrailingStop and above : (possig == 1)  or (xSeries > xATRTrailingStop and above)
-
-sell() =>  PlaySafe ? possig == -1 and xSeries < xATRTrailingStop and below : (possig == -1) or (xSeries < xATRTrailingStop and below)
+sell() =>  PlaySafe ? possig == -1 and priceList < xATRTrailingStop and below : (possig == -1) or (priceList < xATRTrailingStop and below)
 
 if (buy() and window())
     strategy.entry("Long", strategy.long, quanitity)
 if (sell() and window())
     strategy.entry("Short", strategy.short, quanitity)
 
-plot(nRes, title='SMA', color=#00ffaa, linewidth=2, style=plot.style_line)
+plot(xSMA, title='SMA', color=#00ffaa, linewidth=2, style=plot.style_line)
