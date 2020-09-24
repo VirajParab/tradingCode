@@ -26,6 +26,7 @@ xATRTrailingStop := iff(priceList > nz(xATRTrailingStop[1], 0) and priceList[1] 
    
 pos = 0
 xEMA = ema(priceList, smaLength)
+
 above = crossover(xEMA, xATRTrailingStop)
 below = crossover(xATRTrailingStop, xEMA)
 
@@ -37,9 +38,16 @@ buy() => PlaySafe ? possig == 1  and priceList > xATRTrailingStop and above : (p
 
 sell() =>  PlaySafe ? possig == -1 and priceList < xATRTrailingStop and below : (possig == -1) or (priceList < xATRTrailingStop and below)
 
+diff = TriggerPrice - xEMA
+
+actionThreshold = input(15, title = "Action Threshold")
+
+timeForAction() => (diff < actionThreshold) and (diff > actionThreshold-actionThreshold*2)? 1 : 0
+
 bgcolor(buy() ? color.green : sell() ? color.red : na,transp=50)
 plotshape(buy(), color=color.black, style=shape.arrowup, text="Buy", location=location.bottom)
 plotshape(sell(), color=color.black, style=shape.arrowdown, text="Sell", location=location.top)
-
+// plotchar(timeForAction(), "action")
+alertcondition(buy() or sell(), title='Alert from ATR EMA study', message='Alert')
 
 plot(xEMA, title='EMA', color=#00ffaa, linewidth=2, style=plot.style_line)
