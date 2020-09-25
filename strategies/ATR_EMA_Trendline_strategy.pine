@@ -31,9 +31,9 @@ TriggerPrice = input(title="Trigger Price", type=input.source, defval=close)
 
 //ATR trendline
 
-Atr=input(defval=5,title="Atr Period",minval=1,maxval=500)
-Hhv=input(defval=10,title="HHV Period",minval=1,maxval=500)
-Mult=input(defval=2.5,title="Multiplier",minval=0.1)
+Atr=input(defval=3,title="Atr Period",minval=1,maxval=500)
+Hhv=input(defval=14,title="HHV Period",minval=1,maxval=500)
+Mult=input(defval=1,title="Multiplier",minval=0.1)
 Barcolor=input(true,title="Barcolor")
 
 TS=highest(high-Mult*atr(Atr),Hhv),barssince(close>highest(high-Mult*atr(Atr),Hhv) and close>close)
