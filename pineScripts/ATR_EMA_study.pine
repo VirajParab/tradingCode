@@ -11,9 +11,7 @@ atrSensitivity = input(7,     title = "Key Vaule. 'This changes the sensitivity'
 atrPeriod = input(14,    title = "ATR Period")
 
 xATR  = atr(atrPeriod)
-
 nLoss = atrSensitivity * xATR
-
 xATRTrailingStop = 0.0
 
 // isLastTwoPricesGreaterThanStop() => priceList > nz(xATRTrailingStop[1], 0) and priceList[1] > nz(xATRTrailingStop[1], 0)
@@ -34,8 +32,8 @@ pos := iff(TriggerPrice > xEMA, 1,
          iff(TriggerPrice < xEMA, -1, nz(pos[1], 0)))
 possig =iff(pos[1] != pos, pos, 0)
 
-buy() => PlaySafe ? possig == 1  and priceList > xATRTrailingStop and above : (possig == 1)  or (priceList > xATRTrailingStop and above)
-sell() =>  PlaySafe ? possig == -1 and priceList < xATRTrailingStop and below : (possig == -1) or (priceList < xATRTrailingStop and below)
+buy() =>(possig == 1)  or (priceList > xATRTrailingStop and above)
+sell() => (possig == -1) or (priceList < xATRTrailingStop and below)
 
 //Doji Candle check
 C_Len = 14 // ema depth for bodyAvg
