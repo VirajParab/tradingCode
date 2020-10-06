@@ -1,0 +1,50 @@
+//@version=4
+
+//This indicator was made to allow three moving averages to be displayed without needing to use up 3 charting indicators individually
+
+study(title="Triple Moving Averages", shorttitle="TEMA", overlay=true)
+
+// Checkbox's for the other 2 MA's
+showSecondMA = input(true, title="Enable 2nd MA")
+ShowThirdMA = input(true, title="Enable 3rd MA")
+
+len = input(5, minval=1, title="Length")
+len2 = input(8, minval=1, title="Length2")
+len3 = input(13, minval=1, title="Length3")
+
+// len = input(9, minval=1, title="Length")
+// len2 = input(21, minval=1, title="Length2")
+// len3 = input(50, minval=1, title="Length3")
+
+src = input(close, title="Source")
+src2 = input(close, title="Source2")
+src3 = input(close, title="Source3")
+
+short = ema(src, len)
+long = ema(src2, len2)
+longest = ema(src3, len3)
+
+plot(short, title="short EMA", color=color.red)
+plot(showSecondMA and long ? long: na, title="long EMA", color=color.green)
+plot(ShowThirdMA and longest ? longest: na, title="longest EMA", color=color.blue)
+
+// MA cross alert
+BuyMAcrossing = crossover(short, long)
+SellMAcrossing = crossover(long, short)
+BuylongestMAcrossing = crossover(long, longest)
+SelllongestMAcrossing = crossover(longest, long)
+// plot(BuyMAcrossing, style = plot.style_cross, linewidth = 4,color=color.black)
+
+TrendingUp() => short > long
+TrendingDown() => short < long
+LongestAbove() => longest > long
+LongestBelow() => longest < long
+
+Uptrend() => TrendingUp() and BuyMAcrossing 
+Downtrend() => TrendingDown() and SellMAcrossing
+
+stongBuy() => (Uptrend() and LongestBelow()) or (BuylongestMAcrossing)
+stongSell() => (Downtrend() and LongestAbove()) or (SelllongestMAcrossing)
+plotshape(stongBuy(), color=color.black, style=shape.arrowup, text="Buy", location=location.bottom)
+plotshape(stongSell(), color=color.black, style=shape.arrowdown, text="Sell", location=location.top)
+bgcolor(stongBuy() ? color.green : stongSell() ? color.red : na,transp=50)

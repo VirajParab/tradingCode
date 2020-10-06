@@ -1,0 +1,44 @@
+//@version=4
+
+//This indicator was made to allow three moving averages to be displayed without needing to use up 3 charting indicators individually
+
+strategy(title="3MA Strategy", default_qty_value = 50, overlay = true, initial_capital=50000, default_qty_type = strategy.cash, commission_type =  strategy.commission.percent, commission_value = 0.05, calc_on_every_tick=true)
+
+/Time window for strategy
+
+// === INPUT BACKTEST RANGE ===
+fromDay   = input(defval = 1,    title = "From Day",        type = input.integer, minval = 1, maxval = 31)
+fromMonth = input(defval = 3,    title = "From Month",      type = input.integer, minval = 1, maxval = 12)
+fromYear  = input(defval = 2020, title = "From Year",       type = input.integer, minval = 1970)
+thruDay   = input(defval = 15,    title = "Thru Day",        type = input.integer, minval = 1, maxval = 31)
+thruMonth = input(defval = 9,    title = "Thru Month",      type = input.integer, minval = 1, maxval = 12)
+thruYear  = input(defval = 2020, title = "Thru Year",       type = input.integer, minval = 1970)
+
+// === FUNCTION EXAMPLE ===
+start     = timestamp(fromYear, fromMonth, fromDay, 00, 00)        // backtest start window
+finish    = timestamp(thruYear, thruMonth, thruDay, 23, 59)        // backtest finish window
+window()  => time >= start and time <= finish ? true : false       // create function "within window of time"
+
+// Checkbox's for the other 2 MA's
+showSecondMA = input(true, title="Enable 2nd MA")
+ShowThirdMA = input(true, title="Enable 3rd MA")
+
+len = input(20, minval=1, title="Length")
+len2 = input(50, minval=1, title="Length2")
+len3 = input(200, minval=1, title="Length3")
+
+src = input(close, title="Source")
+src2 = input(close, title="Source2")
+src3 = input(close, title="Source3")
+
+out = ema(src, len)
+out2 = ema(src2, len2)
+out3 = ema(src3, len3)
+
+plot(out, title="EMA", color=color.red)
+plot(showSecondMA and out2 ? out2: na, title="EMA2", color=color.green)
+plot(ShowThirdMA and out3 ? out3: na, title="EMA3", color=color.blue)
+
+plotshape(buy,  title = "Buy",  text = 'Buy',  style = shape.labelup,   location = location.belowbar, color= color.green, textcolor = color.white, transp = 0, size = size.tiny)
+plotshape(sell, title = "Sell", text = 'Sell', style = shape.labeldown, location = location.abovebar, color= color.red,   textcolor = color.white, transp = 0, size = size.tiny)
+    
