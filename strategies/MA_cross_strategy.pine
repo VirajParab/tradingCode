@@ -1,0 +1,123 @@
+//@version=4
+strategy(title="Moving Average Cross Alert Strategy", default_qty_value = 50, overlay = true, initial_capital=50000, default_qty_type = strategy.cash, commission_type =  strategy.commission.percent, commission_value = 0.05, calc_on_every_tick=true)
+
+//Time window for strategy
+
+// === INPUT BACKTEST RANGE ===
+fromDay   = input(defval = 1,    title = "From Day",        type = input.integer, minval = 1, maxval = 31)
+fromMonth = input(defval = 1,    title = "From Month",      type = input.integer, minval = 1, maxval = 12)
+fromYear  = input(defval = 2020, title = "From Year",       type = input.integer, minval = 1970)
+thruDay   = input(defval = 30,    title = "Thru Day",        type = input.integer, minval = 1, maxval = 31)
+thruMonth = input(defval = 9,    title = "Thru Month",      type = input.integer, minval = 1, maxval = 12)
+thruYear  = input(defval = 2020, title = "Thru Year",       type = input.integer, minval = 1970)
+
+// === FUNCTION EXAMPLE ===
+start     = timestamp(fromYear, fromMonth, fromDay, 00, 00)        // backtest start window
+finish    = timestamp(thruYear, thruMonth, thruDay, 23, 59)        // backtest finish window
+window()  => time >= start and time <= finish ? true : false       // create function "within window of time"
+
+// Multi-timeframe and price input
+pricetype = input(close, title="Price Source For The Moving Averages")
+useCurrentRes = input(true, title="Use Current Timeframe As Resolution?")
+resCustom = input(title="Use Different Timeframe? Then Uncheck The Box Above", type=input.resolution, defval="W")
+res = useCurrentRes ? timeframe.period : resCustom
+price = security(syminfo.tickerid, res, pricetype)
+closeEndOfDay = input(title="Close Trade End Of Day", type=input.bool, defval=false)
+
+// MA period input
+shortperiod = input(50, title="Short Period Moving Average")
+longperiod = input(100, title="Long Period Moving Average")
+
+// MA calculation
+smoothinput = input(2, minval=1, maxval=3, title='Moving Average Calculation: (1 = SMA), (2 = EMA), (3 = WMA)')
+short = if smoothinput == 1
+    sma(price, shortperiod)
+else if smoothinput == 2
+    ema(price, shortperiod)
+else if smoothinput == 3
+    wma(price, shortperiod)
+else 
+    na
+
+long = if smoothinput == 1
+    sma(price, longperiod)
+else if smoothinput == 2
+    ema(price, longperiod)
+else if smoothinput == 3
+    wma(price, longperiod)
+else 
+    na
+
+// MA trend direction color
+shortcolor = short > short[1] ? color.lime : short < short[1] ? color.red : color.blue
+longcolor = long > long[1] ? color.lime : long < long[1] ? color.red : color.blue
+
+// MA output
+MA1 = plot(short, title="Short Period Moving Average", style=plot.style_linebr, linewidth=2, color=shortcolor)
+MA2 = plot(long, title="Long Period Moving Average", style=plot.style_linebr, linewidth=4, color=longcolor)
+fill(MA1, MA2, color=color.silver, transp=50)
+
+// MA trend bar color
+TrendingUp() => short > long 
+TrendingDown() => short < long 
+barcolor(TrendingUp() ? color.green : TrendingDown() ? color.red : color.blue)
+
+// MA cross alert
+MAcrossing = cross(short, long) ? short : na
+plot(MAcrossing, style = plot.style_cross, linewidth = 4,color=color.black)
+
+// MA cross background color alert
+Uptrend() => TrendingUp() and TrendingDown()[1]
+Downtrend() => TrendingDown() and TrendingUp()[1]
+bgcolor(Uptrend() ? color.green : Downtrend() ? color.red : na,transp=50)
+
+showSignal = input(title="Show Signal ?", type=input.bool, defval=true)
+signalType = input(title="Signal Smoothing Type", defval="SMA", options=["EMA", "SMA"])
+signalLength = input(title="Signal Smoothing Length", type=input.integer, defval=21)
+src = input(title="Source", type=input.source, defval=close)
+highlightCrossovers = input(title="Highlight Crossovers ?", type=input.bool, defval=false)
+applyFilling = input(title="Apply Ribbon Filling ?", type=input.bool, defval=true)
+
+signal = signalType == "EMA" ? ema(pvt, signalLength) : sma(pvt, signalLength)
+
+trendColor = pvt > signal ? #0ebb23 : color.red
+pvtColor = applyFilling ? trendColor : #0094ff
+signalColor = applyFilling ? trendColor : #ff6a00
+
+// pvtPlot = plot(pvt, title="PVT", linewidth=2, color=pvtColor, transp=0)
+// signalPlot = plot(showSignal ? signal : na, title="Signal", color=signalColor, transp=0)
+
+transparent = color.new(color.white, 100)
+
+// fillColor = applyFilling ? trendColor : transparent
+// fill(pvtPlot, signalPlot, color=fillColor, transp=70)
+
+buyAlert = crossover(pvt, signal)
+sellAlert = crossunder(pvt, signal)
+
+// plotshape(buyAlert and highlightCrossovers ? pvt : na, title="Crossover", location=location.absolute, style=shape.circle, size=size.tiny, color=color.green, transp=0)
+// plotshape(sellAlert and highlightCrossovers ? pvt : na, title="Crossunder", location=location.absolute, style=shape.circle, size=size.tiny, color=color.red, transp=0)
+
+// alertcondition(buyAlert, title="Alert: Buy", message="Buy\nSymbol: {{exchange}}:{{ticker}}\nPrice: {{close}}")
+// alertcondition(sellAlert, title="Alert: Sell", message="Sell\nSymbol: {{exchange}}:{{ticker}}\nPrice: {{close}}")
+
+quanitity = input(50, "Quanitity input")
+
+// Buy and sell alert
+Buy() => Uptrend() and close > close[1] and pvt > signal
+Sell() => Downtrend() and close < close[1] and pvt < signal
+plotshape(Buy(), color=color.black, style=shape.arrowup, text="Buy", location=location.bottom)
+plotshape(Sell(), color=color.black, style=shape.arrowdown, text="Sell", location=location.top)
+
+if (Buy() and window())
+    strategy.entry("Long", strategy.long, quanitity)
+if (Sell() and window())
+    strategy.entry("Short", strategy.short, quanitity)
+
+//Exit at the end of day everyday
+
+intraday_sess = "0915-1500"
+t = time(timeframe.period, intraday_sess)
+sess_over = not na(t[1]) and na(t)
+if closeEndOfDay
+    strategy.close_all(when = sess_over)

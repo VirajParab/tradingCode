@@ -17,18 +17,13 @@ start     = timestamp(fromYear, fromMonth, fromDay, 00, 00)        // backtest s
 finish    = timestamp(thruYear, thruMonth, thruDay, 23, 59)        // backtest finish window
 window()  => time >= start and time <= finish ? true : false       // create function "within window of time"
 
-//Exit at the end of day everyday
-
-intraday_sess = "0915-1500"
-t = time(timeframe.period, intraday_sess)
-sess_over = not na(t[1]) and na(t)
-strategy.close_all(when = sess_over)
-
 Source = input(title="Source", type=input.source, defval=close)
 priceList = security(syminfo.tickerid, timeframe.period, Source)
 smaLength = input(title="sma Length", type=input.integer, defval=13, minval=2)
 TriggerPrice = input(title="Trigger Price", type=input.source, defval=close)
-PlaySafe = input(title="Play safe", type=input.bool, defval=false)
+combineATR = input(title="Combine ATR", type=input.bool, defval=false)
+onlyATR = input(title="Only ATR", type=input.bool, defval=false)
+closeEndOfDay = input(title="Close Trade End Of Day", type=input.bool, defval=false)
 
 atrSensitivity = input(7,     title = "Key Vaule. 'This changes the sensitivity'")
 atrPeriod = input(14,    title = "ATR Period")
@@ -58,13 +53,24 @@ possig =iff(pos[1] != pos, pos, 0)
 
 quanitity = input(50, "Quanitity input")
 
-buy() => PlaySafe ? possig == 1  and priceList > xATRTrailingStop and above : (possig == 1)  or (priceList > xATRTrailingStop and above)
+buy() => combineATR ? (possig == 1) or (priceList > xATRTrailingStop and above) : (possig == 1)
 
-sell() =>  PlaySafe ? possig == -1 and priceList < xATRTrailingStop and below : (possig == -1) or (priceList < xATRTrailingStop and below)
+sell() => combineATR ? (possig == -1) or (priceList < xATRTrailingStop and below) : (possig == -1)
 
 if (buy() and window())
     strategy.entry("Long", strategy.long, quanitity)
 if (sell() and window())
     strategy.entry("Short", strategy.short, quanitity)
 
+strategy.close("Long", when = above)
+strategy.close("Long", when = below)
+
 plot(xEMA, title='EMA', color=#00ffaa, linewidth=2, style=plot.style_line)
+
+//Exit at the end of day everyday
+
+intraday_sess = "0915-1500"
+t = time(timeframe.period, intraday_sess)
+sess_over = not na(t[1]) and na(t)
+if closeEndOfDay
+    strategy.close_all(when = sess_over)
