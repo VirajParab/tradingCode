@@ -1,0 +1,66 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © crazycompiler
+
+//@version=5
+strategy("Pivot Points High Low tests", shorttitle="Pivots HL strategy",  overlay=true, max_labels_count=500)
+// indicator("Pivot Points High Low", shorttitle="Pivots HL", overlay=true, max_labels_count=500)
+
+lengthGroupTitle = "LENGTH LEFT / RIGHT"
+colorGroupTitle = "Text Color / Label Color"
+leftLenH = input.int(title="Pivot High", defval=7, minval=1, inline="Pivot High", group=lengthGroupTitle)
+rightLenH = input.int(title="/", defval=7, minval=1, inline="Pivot High", group=lengthGroupTitle)
+textColorH = input(title="Pivot High", defval=color.black, inline="Pivot High", group=colorGroupTitle)
+labelColorH = input(title="", defval=color.white, inline="Pivot High", group=colorGroupTitle)
+
+leftLenL = input.int(title="Pivot Low", defval=7, minval=1, inline="Pivot Low", group=lengthGroupTitle)
+rightLenL = input.int(title="/", defval=7, minval=1, inline="Pivot Low", group=lengthGroupTitle)
+textColorL = input(title="Pivot Low", defval=color.black, inline="Pivot Low", group=colorGroupTitle)
+labelColorL = input(title="", defval=color.white, inline="Pivot Low", group=colorGroupTitle)
+
+ph = ta.pivothigh(leftLenH, rightLenH)
+pl = ta.pivotlow(leftLenL, rightLenL)
+
+drawLabel(_offset, _pivot, _style, _color, _textColor) =>
+    if not na(_pivot)
+        label.new(bar_index[_offset], _pivot, str.tostring(_pivot, format.mintick), style=_style, color=_color, textcolor=_textColor)
+
+drawLabel(rightLenH, ph, label.style_label_down, labelColorH, textColorH)
+drawLabel(rightLenL, pl, label.style_label_up, labelColorL, textColorL)
+
+
+//Time window for strategy
+
+// === INPUT BACKTEST RANGE ===
+fromDay   = input.int(defval = 1,    title = "From Day", minval = 1, maxval = 31)
+fromMonth = input.int(defval = 9,    title = "From Month", minval = 1, maxval = 12)
+fromYear  = input.int(defval = 2020, title = "From Year", minval = 1970)
+thruDay   = input.int(defval = 19,    title = "Thru Day", minval = 1, maxval = 31)
+thruMonth = input.int(defval = 9,    title = "Thru Month", minval = 1, maxval = 12)
+thruYear  = input.int(defval = 2020, title = "Thru Year", minval = 1970)
+
+// === FUNCTION EXAMPLE ===
+start     = timestamp(fromYear, fromMonth, fromDay, 00, 00)        // backtest start window
+finish    = timestamp(thruYear, thruMonth, thruDay, 23, 59)        // backtest finish window
+window()  => time >= start and time <= finish ? true : false       // create function "within window of time"
+
+quanitity = input(50, "Quanitity input")
+
+//Exit at the end of day everyday
+
+intraday_sess = "0915-1500"
+t = time(timeframe.period, intraday_sess)
+sess_over = not na(t[1]) and na(t)
+strategy.close_all(when = sess_over)
+
+
+
+if (not na(ph) and window())
+    strategy.entry("Short", strategy.short, quanitity)
+    
+// if (not na(pl))
+//     strategy.entry("Long", strategy.long, quanitity)
+
+// strategy.close("Long", when = not na(ph), comment = "Long Exit due to bearish pattern")
+
+if (not na(pl) and window())
+    strategy.close("Short", comment = "Short Exit due to bullish pattern")
