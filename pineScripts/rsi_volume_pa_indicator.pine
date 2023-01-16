@@ -3,20 +3,24 @@
 
 //@version=5
 // rsi_volume_pa
-strategy("rsi_volume_pa", overlay = true)
+strategy("rsi_volume_pa", overlay = true, default_qty_value = 50)
 
 // input for trailling SL
 trailPerc = input.float(title="Trail Long Loss (%)", minval=0.0, step=0.1, defval=0.15) * 0.01
+exitAtTarget = input.bool(title = "Exit when one opposite candle shown", defval = false)
+useStochasticRSI = input.bool(title = "Use stochastic RSI", defval = false)
+useSuperTrend = input.bool(title = "Use super trend", defval = false)
+
 
 //Time window for strategy
 
 // === INPUT BACKTEST RANGE ===
 fromDay   = input.int(defval = 1,    title = "From Day",    minval = 1, maxval = 31)
-fromMonth = input.int(defval = 1,    title = "From Month",  minval = 1, maxval = 12)
-fromYear  = input.int(defval = 2023, title = "From Year",   minval = 1970)
-thruDay   = input.int(defval = 2,    title = "Thru Day",    minval = 1, maxval = 31)
-thruMonth = input.int(defval = 1,    title = "Thru Month",  minval = 1, maxval = 12)
-thruYear  = input.int(defval = 2023, title = "Thru Year",   minval = 1970)
+fromMonth = input.int(defval = 12,    title = "From Month",  minval = 1, maxval = 12)
+fromYear  = input.int(defval = 2022, title = "From Year",   minval = 1970)
+thruDay   = input.int(defval = 30,    title = "Thru Day",    minval = 1, maxval = 31)
+thruMonth = input.int(defval = 12,    title = "Thru Month",  minval = 1, maxval = 12)
+thruYear  = input.int(defval = 2022, title = "Thru Year",   minval = 1970)
 
 // === FUNCTION EXAMPLE ===
 start     = timestamp(fromYear, fromMonth, fromDay, 00, 00)        // backtest start window
@@ -82,13 +86,53 @@ plot(series=(strategy.position_size > 0) ? longStopPrice : na, color=color.rgb(2
 plot(series=(strategy.position_size < 0) ? shortStopPrice : na, color=color.rgb(47, 249, 11), style=plot.style_cross,linewidth=2, title="Short Trail Stop")
 
 
+// StochasticRSI 
+rsi1 = ta.rsi(close, 14)
+k = ta.sma(ta.stoch(rsi1, rsi1, rsi1, 14), 3)
+smallRSI = k < 30
+largeRSI = k > 70
+
+// Super trend
+atrPeriod = input(10, "ATR Length")
+factor = input.float(2.0, "Factor", step = 0.01)
+
+[supertrend, direction] = ta.supertrend(factor, atrPeriod)
+
+bodyMiddle = plot((open + close) / 2, display=display.none)
+upTrend = direction == -1
+downTrend = direction == 1
+
+plot(direction, title = "direction")
+
 // Submit entry orders
 if (window()) 
-    if (bullish_signal)
-        strategy.entry(id="EL", direction = strategy.long)
+    if useStochasticRSI
+        if (bullish_signal and strategy.position_size == 0 and smallRSI)
+            strategy.entry(id="EL", direction = strategy.long)
+    else if useSuperTrend
+        if (bullish_signal and strategy.position_size == 0 and upTrend)
+            strategy.entry(id="EL", direction = strategy.long)
+    else
+        if (bullish_signal and strategy.position_size == 0)
+            strategy.entry(id="EL", direction = strategy.long)
 
-    if (bearish_signal)
-        strategy.entry(id="ES", direction = strategy.short)
+    if useStochasticRSI
+        if (bearish_signal and strategy.position_size == 0 and largeRSI)
+            strategy.entry(id="ES", direction = strategy.short)
+    else if useSuperTrend
+        if (bearish_signal and strategy.position_size == 0 and downTrend)
+            strategy.entry(id="ES", direction = strategy.short)
+    else
+        if (bearish_signal and strategy.position_size == 0)
+            strategy.entry(id="ES", direction = strategy.short)
+
+
+if (exitAtTarget)
+    if (prevCandleRed)
+        strategy.close(id="EL", comment = "Target meet for long")
+
+    if (prevCandleGreen)
+        strategy.close(id="ES", comment = "Target meet for short")
 
 // Submit exit orders for trail stop loss price
 if (strategy.position_size > 0)
